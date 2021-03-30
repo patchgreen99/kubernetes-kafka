@@ -9,7 +9,7 @@ RUN set -ex; \
   buildDeps='curl ca-certificates gnupg dirmngr'; \
   apt-get update && apt-get install -y $runDeps $buildDeps --no-install-recommends; \
   \
-  curl -s   -o KEYS https://www.apache.org/dist/kafka/KEYS; \
+  curl -fsSL -k -s   -o KEYS https://www.apache.org/dist/kafka/KEYS; \
   gpg --import KEYS && rm KEYS; \
   \
   SCALA_BINARY_VERSION=$(echo $SCALA_VERSION | cut -f 1-2 -d '.'); \
