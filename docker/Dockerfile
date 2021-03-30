@@ -1,0 +1,39 @@
+# The only assumption we make about this FROM is that it has a JRE in path
+FROM solsson/jdk-opensource:11.0.2@sha256:9088fd8eff0920f6012e422cdcb67a590b2a6edbeae1ff0ca8e213e0d4260cf8
+
+ENV KAFKA_VERSION=2.1.0 SCALA_VERSION=2.11
+
+RUN set -ex; \
+  export DEBIAN_FRONTEND=noninteractive; \
+  runDeps='netcat-openbsd'; \
+  buildDeps='curl ca-certificates gnupg dirmngr'; \
+  apt-get update && apt-get install -y $runDeps $buildDeps --no-install-recommends; \
+  \
+  curl -s   -o KEYS https://www.apache.org/dist/kafka/KEYS; \
+  gpg --import KEYS && rm KEYS; \
+  \
+  SCALA_BINARY_VERSION=$(echo $SCALA_VERSION | cut -f 1-2 -d '.'); \
+  mkdir -p /opt/kafka; \
+  curl -s   -o kafka_$SCALA_BINARY_VERSION-$KAFKA_VERSION.tgz.asc https://archive.apache.org/dist/kafka/$KAFKA_VERSION/kafka_$SCALA_BINARY_VERSION-$KAFKA_VERSION.tgz.asc; \
+  curl -SLs -o kafka_$SCALA_BINARY_VERSION-$KAFKA_VERSION.tgz "https://archive.apache.org/dist/kafka/$KAFKA_VERSION/kafka_$SCALA_BINARY_VERSION-$KAFKA_VERSION.tgz"; \
+  gpg --verify kafka_$SCALA_BINARY_VERSION-$KAFKA_VERSION.tgz.asc kafka_$SCALA_BINARY_VERSION-$KAFKA_VERSION.tgz; \
+  tar xzf kafka_$SCALA_BINARY_VERSION-$KAFKA_VERSION.tgz --strip-components=1 -C /opt/kafka; \
+  rm kafka_$SCALA_BINARY_VERSION-$KAFKA_VERSION.tgz; \
+  \
+  rm -rf /opt/kafka/site-docs; \
+  \
+  apt-get purge -y --auto-remove $buildDeps; \
+  rm -rf /var/lib/apt/lists/*; \
+  rm -rf /var/log/dpkg.log /var/log/alternatives.log /var/log/apt /etc/ssl/certs /root/.gnupg
+
+ADD ./docker/init.sh /etc/kafka/init.sh
+ADD ./docker/zookeeper.properties /etc/kafka/zookeeper.properties
+ADD ./docker/log4j.properties /etc/kafka/log4j.properties
+ADD ./docker/kafka-init.sh /etc/kafka/kafka-init.sh
+ADD ./docker/server.properties /etc/kafka/server.properties
+ADD ./docker/kafka-log4j.properties /etc/kafka/kafka-log4j.properties
+
+WORKDIR /opt/kafka
+
+COPY ./docker/docker-help.sh /usr/local/bin/docker-help
+ENTRYPOINT ["docker-help"]
